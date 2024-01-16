@@ -1,3 +1,4 @@
+
 import tkinter as tk
 import calendar
 import json
@@ -158,7 +159,7 @@ def weather(lat,lon,):
                 day_label.image = icon_photo
 
 
-def show_day_view(day):
+def show_day_view(day): 
     # Update the global variables
     global currentView, monthGlobal, yearGlobal
     currentView = "day"
@@ -169,7 +170,7 @@ def show_day_view(day):
     for widget in middle_box.winfo_children():
         widget.destroy()
 
-    # Draw day view
+    # Draw day view 
     # Create a 3x10 grid view
     for row in range(10):
         middle_box.grid_rowconfigure(row, weight=1)  # Set row weight to 1
@@ -308,7 +309,7 @@ root.bind("<Configure>", resize)
 # Call populate_month initially
 populate_month(monthGlobal, yearGlobal)
 
-weather(49.840897494107374,8.646186104715479)
+weather(51.13819451525496,1.2872157194039093)
 
 # Start the main event loop
 root.mainloop()

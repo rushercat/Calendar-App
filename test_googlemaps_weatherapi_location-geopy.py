@@ -52,7 +52,7 @@ def weather(city, country):
         else:
             print(f"An error occurred: {e}")
 
-# Get user input for city and country
+# user input for city and country
 city = input("Enter city: ")
 country = input("Enter country: ")
 

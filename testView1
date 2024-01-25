@@ -4,9 +4,10 @@ import calendar
 import json
 import requests
 from PIL import ImageTk, Image
-import requests
 from io import BytesIO
 import boto3
+from geopy.geocoders import Nominatim
+from geopy.exc import GeocoderTimedOut, GeocoderUnavailable
 
 # Global variables
 monthGlobal = 12

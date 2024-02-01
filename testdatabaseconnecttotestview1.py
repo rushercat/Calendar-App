@@ -1,5 +1,6 @@
-
+import sqlite3
 import tkinter as tk
+from tkinter import ttk
 import calendar
 import json
 import requests
@@ -8,7 +9,47 @@ from io import BytesIO
 import boto3
 from geopy.geocoders import Nominatim
 from geopy.exc import GeocoderTimedOut, GeocoderUnavailable
-from requests.exceptions import HTTPError
+
+
+def create_database():
+    conn = sqlite3.connect('event_database.db')
+    cursor = conn.cursor()
+    
+    cursor.execute('''
+    CREATE TABLE IF NOT EXISTS events (
+        event_name TEXT,
+        event_description TEXT,
+        event_location TEXT,
+        event_duration TEXT,
+        event_participants INTEGER,
+        event_priority INTEGER
+    )
+    ''')
+    conn.commit()
+    conn.close()
+
+def add_event_to_database(event_name, event_description, event_location, event_duration, event_participants, event_priority):
+    
+    conn = sqlite3.connect('event_database.db')
+    cursor = conn.cursor()
+    cursor.execute('''
+    INSERT INTO events (event_name, event_description, event_location, event_duration, event_participants, event_priority)
+    VALUES (?, ?, ?, ?, ?, ?)
+    ''', (event_name, event_description, event_location, event_duration, event_participants, event_priority))
+    cursor.execute("SELECT * FROM events")
+    rows = cursor.fetchall()
+    for row in rows:
+        print(row[0])
+        print(row[1])
+        print(row[2])
+        print(row[3])
+        print(row[4])
+        print(row[5])
+    conn.commit()
+    conn.close()
+
+
+
 
 # Global variables
 monthGlobal = 12
@@ -54,7 +95,7 @@ def populate_month(month, year):
     currentView = "month"
     month_name = number_to_month(month)
     view_header_label.config(text=str(month_name) + ", " + str(yearGlobal))
-
+    
 
     # Clear content frame
     for widget in middle_box.winfo_children():
@@ -106,51 +147,59 @@ def populate_month(month, year):
 
 
 
+#Wetter API
+def weather(lat,lon,):
+    Response = requests.get("https://api.weatherapi.com/v1/current.json?key=c6030ed1293e48eb91e170829233012&q="+str(lat)+","+str(lon))
+    #51.508669,-0.082512
+    print(Response.json())
+    condition = Response.json()['current']['condition']['text']
+    icon = 'https:' + str(Response.json()['current']['condition']['icon'])
+    temp = Response.json()['current']['temp_c']
+    name = Response.json()['location']['name']
+    country = Response.json()['location']['country']
+    response = requests.get(icon)
+    icon_data = response.content
 
-# Function to get coordinates based on city and country
-def get_coordinates(city, country):
-    geolocator = Nominatim(user_agent="geoapiExercises")
-    try:
-        location = geolocator.geocode(city + ',' + country)
-        if location:
-            return location.latitude, location.longitude
-        else:
-            return None, None
-    except Exception as e:
-        print(f"An error occurred: {e}")
-        return None, None
+    # Create an image from the icon data
+    icon_image = Image.open(BytesIO(icon_data))
 
-# Function to get weather information and display it
-def fetch_weather():
-    city = city_entry.get()
-    country = country_entry.get()
-    lat, lon = get_coordinates(city, country)
-    if lat is None or lon is None:
-        weather_label.config(text="Coordinates could not be found.")
-        return
+    # Resize the image if needed
+    #icon_image = icon_image.resize((50, 50))
 
-    try:
-        response = requests.get(f"https://api.weatherapi.com/v1/current.json?key=c6030ed1293e48eb91e170829233012&q={lat},{lon}")
-        response.raise_for_status()
-        data = response.json()
+    # Convert the image to Tkinter-compatible format
+    icon_photo = ImageTk.PhotoImage(icon_image)
 
-        condition = data['current']['condition']['text']
-        icon_url = 'https:' + data['current']['condition']['icon']
-        temp = data['current']['temp_c']
-        name = data['location']['name']
-        country = data['location']['country']
+    # Create a label to display the image
+    #icon_label = tk.Label(left_box, image=icon_photo)
+    #icon_label.pack()
 
-        icon_response = requests.get(icon_url)
-        icon_data = icon_response.content
-        icon_image = Image.open(BytesIO(icon_data))
-        icon_photo = ImageTk.PhotoImage(icon_image)
+    # Keep a reference to the image to prevent it from being garbage collected
+    #icon_label.image = icon_photo
 
-        weather_label.config(text=f"Weather in {name}, {country}: {temp}°C, {condition}", image=icon_photo, compound='top')
-        weather_label.image = icon_photo
-    except requests.exceptions.RequestException as e:
-        weather_label.config(text=f"Error fetching weather data: {e}")
+    # Clear content frame
+    for widget in left_box.winfo_children():
+        widget.destroy()
 
-
+    # Draw day view
+    # Create a 3x10 grid view
+    for row in range(4):
+        left_box.grid_rowconfigure(row, weight=1)  # Set row weight to 1
+        for col in range(1):
+            left_box.grid_columnconfigure(col, weight=1)  # Set column weight to 1
+            if row == 0:
+                day_label = tk.Label(left_box, text=str(name)+", "+str(country))
+                day_label.grid(row=row, column=col, padx=5, pady=5, sticky="nsew")
+            elif row == 1:
+                day_label = tk.Label(left_box, text=str(temp)+"°C")
+                day_label.grid(row=row, column=col, padx=5, pady=5, sticky="nsew")
+            elif row == 2:
+                day_label = tk.Label(left_box, text=str(condition))
+                day_label.grid(row=row, column=col, padx=5, pady=5, sticky="nsew")
+            elif row == 3:
+                day_label = tk.Label(left_box, image=icon_photo)
+                day_label.grid(row=row, column=col, padx=5, pady=5, sticky="nsew")#
+                #day_label.pack()
+                day_label.image = icon_photo
 
 
 def show_day_view(day): 
@@ -174,13 +223,57 @@ def show_day_view(day):
             if col == 0:
                 day_label = tk.Label(middle_box, text=str(row + 9) + ":00")
                 day_label.grid(row=row, column=col, padx=5, pady=5, sticky="nsew")
-
 def show_event_view():
     # Update the global variables
     global currentView
     currentView = "event"
     view_header_label.config(text="Event View")
+    
+    # Clear content frame
+    for widget in middle_box.winfo_children():
+        widget.destroy()
 
+    # Draw event view
+    # Create a 2x10 grid view
+    for row in range(7):
+        middle_box.grid_rowconfigure(row, weight=1)  # Set row weight to 1
+        for col in range(2):
+            middle_box.grid_columnconfigure(col, weight=1)  # Set column weight to 1
+            if col == 0 and row < 6:
+                content = ["Event Name", "Event Description", "Event Location", "Event Duration", "Event Participants", "Event Priority"]
+                day_label = tk.Label(middle_box, text=str(content[row]))
+                day_label.grid(row=row, column=col, padx=5, pady=5, sticky="nsew")  # Use sticky="nsew" to fill the entire cell
+            else:
+                if row == 6 and col == 0:
+                    print('reach the button')
+                    button = tk.Button(middle_box, text='Add Event', command=lambda: add_event(event_name_entry.get(), event_description_entry.get(), event_location_entry.get(), event_duration_entry.get(), event_participants_entry.get(), event_priority_entry.get()))
+                    button.grid(row=row, column=col, padx=5, pady=5, sticky="nsew")
+                    
+                    # Entry fields for event details
+                    event_name_entry = tk.Entry(middle_box)
+                    event_name_entry.grid(row=0, column=1, padx=5, pady=5, sticky="nsew")
+                    
+                    event_description_entry = tk.Entry(middle_box)
+                    event_description_entry.grid(row=1, column=1, padx=5, pady=5, sticky="nsew")
+                    
+                    event_location_entry = tk.Entry(middle_box)
+                    event_location_entry.grid(row=2, column=1, padx=5, pady=5, sticky="nsew")
+                    
+                    event_duration_entry = tk.Entry(middle_box)
+                    event_duration_entry.grid(row=3, column=1, padx=5, pady=5, sticky="nsew")
+                    
+                    event_participants_entry = tk.Entry(middle_box)
+                    event_participants_entry.grid(row=4, column=1, padx=5, pady=5, sticky="nsew")
+                    
+                    event_priority_entry = tk.Entry(middle_box)
+                    event_priority_entry.grid(row=5, column=1, padx=5, pady=5, sticky="nsew")
+'''
+def show_event_view():
+    # Update the global variables
+    global currentView
+    currentView = "event"
+    view_header_label.config(text="Event View")
+    
     # Clear content frame
     for widget in middle_box.winfo_children():
         widget.destroy()
@@ -205,11 +298,12 @@ def show_event_view():
                 else:
                     entry = tk.Entry(middle_box)
                     entry.grid(row=row, column=col, padx=5, pady=5, sticky="nsew")  # Use sticky="nsew" to fill the entire cell
-
-def add_event():
+  '''              
+def add_event(event_name, event_description, event_location, event_duration, event_participants, event_priority):
     # TODO implement functionality to add an event (to the database)
     print("Added event")
- 
+    add_event_to_database(event_name, event_description, event_location, event_duration, event_participants, event_priority)
+   
 def switch_to_month_view():
     if currentView != "month":
         populate_month(monthGlobal, yearGlobal)
@@ -221,7 +315,7 @@ def switch_to_day_view():
 def switch_to_event_view():
     if currentView != "event":
         show_event_view()
-
+'''
 def create_table():
     # AWS RDS configuration
     rds_endpoint = 'database-1.czoa4ea2w8xs.eu-central-1.rds.amazonaws.com'
@@ -233,7 +327,7 @@ def create_table():
     client = boto3.client('rds-data')
 
     # SQL statement to create the table
-    sql_statement = '''
+    sql_statement = 
         CREATE TABLE user (
             id int NOT NULL AUTO_INCREMENT,
             name varchar(255) NOT NULL,
@@ -242,7 +336,8 @@ def create_table():
             status varchar(255) NOT NULL,
             PRIMARY KEY (id)
         )
-          '''
+          
+         
 
     # Execute the SQL statement
     response = client.execute_statement(
@@ -252,10 +347,10 @@ def create_table():
         sql=sql_statement,
         parameters=[]
     )
-
+    
     # Print the response
     print(response)
-        
+    '''    
 # Create the main window
 root = tk.Tk()
 
@@ -295,40 +390,16 @@ right_box = tk.Frame(root, bd=2, relief=tk.SOLID, bg="lightgreen")
 right_box.pack(side=tk.LEFT, padx=10, pady=10, fill=tk.BOTH, expand=True)
 right_box.configure(highlightbackground="lightgreen", highlightcolor="red", highlightthickness=2)
 
-# GUI code (root, header_frame, header_label, view_header_label, left_box, middle_box, right_box)
-
-# Weather input fields and button
-weather_frame = tk.Frame(left_box)
-weather_frame.pack(pady=10)
-
-city_label = tk.Label(weather_frame, text="City:")
-city_label.grid(row=0, column=0)
-city_entry = tk.Entry(weather_frame)
-city_entry.grid(row=0, column=1)
-
-country_label = tk.Label(weather_frame, text="Country:")
-country_label.grid(row=1, column=0)
-country_entry = tk.Entry(weather_frame)
-country_entry.grid(row=1, column=1)
-
-fetch_weather_button = tk.Button(weather_frame, text="Fetch Weather", command=fetch_weather)
-fetch_weather_button.grid(row=2, column=0, columnspan=2)
-
-weather_label = tk.Label(left_box, text="Weather Information")
-weather_label.pack()
+create_database()
+root = tk.Tk()
 # Bind resize event
 root.bind("<Configure>", resize)
 
 # Call populate_month initially
 populate_month(monthGlobal, yearGlobal)
 
-# Call the weather function with user input
-
+weather(51.13819451525496,1.2872157194039093)
 
 # Start the main event loop
 root.mainloop()
 
-
-
-populate_month(monthGlobal, yearGlobal)
-root.mainloop()

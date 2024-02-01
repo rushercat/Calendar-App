@@ -1,0 +1,57 @@
+import sqlite3
+import tkinter as tk
+from tkinter import ttk
+
+def create_database():
+    conn = sqlite3.connect('event_database.db')
+    cursor = conn.cursor()
+    cursor.execute('''
+    CREATE TABLE IF NOT EXISTS events (
+        event_name TEXT,
+        event_description TEXT,
+        event_location TEXT,
+        event_duration TEXT,
+        event_participants INTEGER,
+        event_priority INTEGER
+    )
+    ''')
+    conn.commit()
+    conn.close()
+
+def add_event(event_name, event_description, event_location, event_duration, event_participants, event_priority):
+    conn = sqlite3.connect('event_database.db')
+    cursor = conn.cursor()
+    cursor.execute('''
+    INSERT INTO events (event_name, event_description, event_location, event_duration, event_participants, event_priority)
+    VALUES (?, ?, ?, ?, ?, ?)
+    ''', (event_name, event_description, event_location, event_duration, event_participants, event_priority))
+    conn.commit()
+    conn.close()
+
+def print_database():
+    conn = sqlite3.connect('event_database.db')
+    cursor = conn.cursor()
+    cursor.execute('SELECT * FROM events')
+    events = cursor.fetchall()
+    conn.close()
+
+    window = tk.Tk()
+    window.title("Event Database")
+    tree = ttk.Treeview(window, columns=("name", "description", "location", "duration", "participants", "priority"), show='headings')
+    tree.heading("name", text="Event Name")
+    tree.heading("description", text="Description")
+    tree.heading("location", text="Location")
+    tree.heading("duration", text="Duration")
+    tree.heading("participants", text="Participants")
+    tree.heading("priority", text="Priority")
+
+    for event in events:
+        tree.insert("", "end", values=event)
+    
+    tree.pack(expand=True, fill='both')
+    window.mainloop()
+
+# Beispielverwendung
+create_database()
+add_event('Concert', 'Music event', 'Central Park', '2 hours', 500, 1)
+print_database()

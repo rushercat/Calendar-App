@@ -130,7 +130,7 @@ def fetch_weather():
         return
 
     try:
-        response = requests.get(f"https://api.weatherapi.com/v1/current.json?key=c6030ed1293e48eb91e170829233012&q={lat},{lon}")
+        response = requests.get(f"https://api.weatherapi.com/v1/current.json?key=9f81700dee234f0a829113545241501&q={lat},{lon}")
         response.raise_for_status()
         data = response.json()
 

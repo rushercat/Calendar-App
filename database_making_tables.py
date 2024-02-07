@@ -241,45 +241,50 @@ def fetch_weather():
         weather_label.config(text=f"Error fetching weather data: {e}")
 
 
+def delete_event(event_name, event_date):
+    conn = sqlite3.connect('event_database.db')
+    cursor = conn.cursor()
+    cursor.execute("DELETE FROM events WHERE event_name = ? AND event_date = ?", (event_name, event_date))
+    conn.commit()
+    conn.close()
+    print(f"Deleted event '{event_name}' on {event_date}.")
 
 
 def show_day_view(day):
     global currentView, monthGlobal, yearGlobal
     currentView = "day"
-    
-    # Format the selected day for comparison (assuming YYYY-MM-DD format)
     selected_date = f"{yearGlobal}-{monthGlobal:02d}-{day:02d}"
-    
     view_header_label.config(text=f"{day}. {number_to_month(monthGlobal)}, {yearGlobal}")
-
-    # Clear content frame
+    
     for widget in middle_box.winfo_children():
         widget.destroy()
-
-    # Query database for events on this day
+    
     conn = sqlite3.connect('event_database.db')
     cursor = conn.cursor()
     cursor.execute("SELECT event_name, event_description, event_location, event_duration, event_participants, event_priority, event_date FROM events WHERE event_date = ?", (selected_date,))
     events = cursor.fetchall()
-
+    
     if events:
         for event in events:
-            # Create a label for each detail of the event
-            tk.Label(middle_box, text=f"Name of Event: {event[0]}", wraplength=400, justify="left").pack(padx=10, pady=1, anchor="w")
-            tk.Label(middle_box, text=f"Description of the Event: {event[1]}", wraplength=400, justify="left").pack(padx=10, pady=1, anchor="w")
-            tk.Label(middle_box, text=f"Location of the Event: {event[2]}", wraplength=400, justify="left").pack(padx=10, pady=1, anchor="w")
-            tk.Label(middle_box, text=f"Duration of the Event: {event[3]}", wraplength=400, justify="left").pack(padx=10, pady=1, anchor="w")
-            tk.Label(middle_box, text=f"Participants: {event[4]}", wraplength=400, justify="left").pack(padx=10, pady=1, anchor="w")
-            tk.Label(middle_box, text=f"Priority: {event[5]}", wraplength=400, justify="left").pack(padx=10, pady=1, anchor="w")
-            tk.Label(middle_box, text=f"Date: {event[6]}", wraplength=400, justify="left").pack(padx=10, pady=1, anchor="w")
-            # Add a separator for visual distinction between events
-            ttk.Separator(middle_box, orient='horizontal').pack(fill='x', pady=5)
+            event_frame = tk.Frame(middle_box)
+            event_frame.pack(fill='x', padx=5, pady=5, anchor="w")
+            
+            event_info = f"Name: {event[0]}\nDescription: {event[1]}\nLocation: {event[2]}\nDuration: {event[3]}\nParticipants: {event[4]}\nPriority: {event[5]}\nDate: {event[6]}"
+            tk.Label(event_frame, text=event_info, justify="left").pack(side="left")
+            
+            delete_btn = tk.Button(event_frame, text="Delete", command=lambda e=event: delete_event_and_refresh_view(e[0], e[6], day))
+            delete_btn.pack(side="right")
+            
+            ttk.Separator(middle_box).pack(fill='x', padx=5, pady=5)
     else:
         no_events_label = tk.Label(middle_box, text="No events for this day.")
         no_events_label.pack(padx=10, pady=5)
-
-    # Close the database connection
+    
     conn.close()
+def delete_event_and_refresh_view(event_name, event_date, day):
+    delete_event(event_name, event_date)
+    show_day_view(day)
+
 
 
 #verschiedene show_event_view() funktionen(trys)
@@ -421,13 +426,14 @@ view_header_label = tk.Label(root, text=view_header_text, font=("Arial", 12), bd
 view_header_label.pack(fill=tk.X)
 
 # Create left, middle, and right boxes
-left_box = tk.Frame(root, bd=2, relief=tk.SOLID, bg="lightblue")
+left_box = tk.Frame(root, bd=2, relief=tk.SOLID, bg="blue")
 left_box.pack(side=tk.LEFT, padx=10, pady=10, fill=tk.BOTH, expand=True)
-left_box.configure(highlightbackground="lightblue", highlightcolor="red", highlightthickness=2)
+left_box.configure(highlightbackground="darkblue", highlightcolor="blue", highlightthickness=2)
 
-middle_box = tk.Frame(root, bd=2, relief=tk.SOLID, bg="lightyellow")
+middle_box = tk.Frame(root, bd=2, relief=tk.SOLID, bg="Grey")
 middle_box.pack(side=tk.LEFT, padx=10, pady=10, fill=tk.BOTH, expand=True)
-middle_box.configure(highlightbackground="lightyellow", highlightcolor="lightyellow", highlightthickness=2)
+middle_box.configure(highlightbackground="Black", highlightcolor="Black", highlightthickness=2)
+
 
 right_box = tk.Frame(root, bd=2, relief=tk.SOLID, bg="lightgreen")
 right_box.pack(side=tk.LEFT, padx=10, pady=10, fill=tk.BOTH, expand=True)

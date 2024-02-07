@@ -26,7 +26,7 @@ def initialize_or_add_event(event_name=None, event_description=None, event_locat
         event_description TEXT,
         event_location TEXT,    
         event_duration TEXT,
-        event_participants FLOAT,
+        event_participants INTEGER,
         event_priority INTEGER,
         event_date INTEGER
     )""")
@@ -259,20 +259,28 @@ def show_day_view(day):
     # Query database for events on this day
     conn = sqlite3.connect('event_database.db')
     cursor = conn.cursor()
-    cursor.execute("SELECT event_name, event_description, event_location, event_duration, event_participants, event_priority FROM events WHERE event_date = ?", (selected_date,))
+    cursor.execute("SELECT event_name, event_description, event_location, event_duration, event_participants, event_priority, event_date FROM events WHERE event_date = ?", (selected_date,))
     events = cursor.fetchall()
 
     if events:
         for event in events:
-            event_details = f"Name: {event[0]}, Description: {event[1]}, Location: {event[2]}, Duration: {event[3]}, Participants: {event[4]}, Priority: {event[5]}"
-            event_label = tk.Label(middle_box, text=event_details, wraplength=400, justify="left")
-            event_label.pack(padx=10, pady=5, anchor="w")
+            # Create a label for each detail of the event
+            tk.Label(middle_box, text=f"Name of Event: {event[0]}", wraplength=400, justify="left").pack(padx=10, pady=1, anchor="w")
+            tk.Label(middle_box, text=f"Description of the Event: {event[1]}", wraplength=400, justify="left").pack(padx=10, pady=1, anchor="w")
+            tk.Label(middle_box, text=f"Location of the Event: {event[2]}", wraplength=400, justify="left").pack(padx=10, pady=1, anchor="w")
+            tk.Label(middle_box, text=f"Duration of the Event: {event[3]}", wraplength=400, justify="left").pack(padx=10, pady=1, anchor="w")
+            tk.Label(middle_box, text=f"Participants: {event[4]}", wraplength=400, justify="left").pack(padx=10, pady=1, anchor="w")
+            tk.Label(middle_box, text=f"Priority: {event[5]}", wraplength=400, justify="left").pack(padx=10, pady=1, anchor="w")
+            tk.Label(middle_box, text=f"Date: {event[6]}", wraplength=400, justify="left").pack(padx=10, pady=1, anchor="w")
+            # Add a separator for visual distinction between events
+            ttk.Separator(middle_box, orient='horizontal').pack(fill='x', pady=5)
     else:
         no_events_label = tk.Label(middle_box, text="No events for this day.")
         no_events_label.pack(padx=10, pady=5)
 
     # Close the database connection
     conn.close()
+
 
 #verschiedene show_event_view() funktionen(trys)
 """

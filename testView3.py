@@ -1,5 +1,5 @@
-# updatet version of testView1.py
-# new features are: first try of a database(in EventView), a weather api that connects with the internet to provide any location you want
+# updatet version of testView2
+# The new feature is a complete new version of the day view with an integrated database from the event view. The day view is now able to show all events of a specific day and delete them.
 
 import sqlite3
 import tkinter as tk

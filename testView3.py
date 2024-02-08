@@ -15,38 +15,33 @@ from geopy.exc import GeocoderTimedOut, GeocoderUnavailable
 from requests.exceptions import HTTPError
 
 
-def initialize_or_add_event(event_name=None, event_description=None, event_location=None, event_duration=None, event_participants=None, event_priority=None, event_date=None):
-    # Establish a connection to the database. This will create the database file if it doesn't exist.
+def initialize_or_add_event(event_name=None, event_description=None, event_location=None, event_duration=None, event_participants=None, event_priority=None, event_date=None, start_time=None, end_time=None):
     conn = sqlite3.connect('event_database.db')
     cursor = conn.cursor()
-    
-    # Check if the table exists, and if not, create it with the new 'event_date' column.
     cursor.execute("""CREATE TABLE IF NOT EXISTS events (
         event_name TEXT,
         event_description TEXT,
         event_location TEXT,    
-        event_duration TEXT,
+        event_duration FLOAT,
         event_participants INTEGER,
         event_priority INTEGER,
-        event_date INTEGER
+        event_date INTEGER,
+        start_time INTEGER,
+        end_time INTEGER
     )""")
-    
-    # If all event details including the date are provided, insert the event into the database.
-    if all([event_name, event_description, event_location, event_duration, event_participants, event_priority, event_date]):
+    if all([event_name, event_description, event_location, event_duration, event_participants, event_priority, event_date, start_time, end_time]):
         cursor.execute('''
-        INSERT INTO events (event_name, event_description, event_location, event_duration, event_participants, event_priority, event_date)
-        VALUES (?, ?, ?, ?, ?, ?, ?)
-        ''', (event_name, event_description, event_location, event_duration, event_participants, event_priority, event_date))
-    
-    # Commit the changes and close the connection.
+        INSERT INTO events (event_name, event_description, event_location, event_duration, event_participants, event_priority, event_date, start_time, end_time)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+        ''', (event_name, event_description, event_location, event_duration, event_participants, event_priority, event_date, start_time, end_time))
     conn.commit()
     conn.close()
 
 
+
 # Function to add event from the GUI
-def add_event(event_name, event_description, event_location, event_duration, event_participants, event_priority, event_date):
-    # Your existing code to handle event addition
-    # Now include event_date in the call to initialize_or_add_event
+def add_event(event_name, event_description, event_location, event_duration, event_participants, event_priority, event_date, start_time, end_time):
+    # Add the event to the database
     initialize_or_add_event(
         event_name, 
         event_description, 
@@ -54,18 +49,32 @@ def add_event(event_name, event_description, event_location, event_duration, eve
         event_duration, 
         event_participants, 
         event_priority, 
-        event_date  # Include the event date
+        event_date,
+        start_time,
+        end_time
     )
     print("Event added successfully.")
+    
+    # Parse the event_date to extract the day
+    event_year, event_month, event_day = map(int, event_date.split('-'))
+    
+    # Update global variables if needed
+    global monthGlobal, yearGlobal
+    monthGlobal = event_month
+    yearGlobal = event_year
+    
+    # Automatically switch to the day view of the event
+    show_day_view(event_day)
+
 
 def show_event_view():
-    global event_name_entry, event_description_entry, event_location_entry, event_duration_entry, event_participants_entry, event_priority_entry, event_date_entry
+    global event_name_entry, event_description_entry, event_location_entry, event_duration_entry, event_participants_entry, event_priority_entry, event_date_entry, start_time_entry, end_time_entry
 
     view_header_label.config(text="Event View")
     for widget in middle_box.winfo_children():
         widget.destroy()
 
-    labels = ["Event Name", "Event Description", "Event Location", "Event Duration", "Event Participants", "Event Priority", "Event Date (DD-MM-YYYY)"]
+    labels = ["Event Name", "Event Description", "Event Location", "Event Duration", "Event Participants", "Event Priority", "Event Date (DD-MM-YYYY)", "Start Time (HH:MM)", "End Time (HH:MM)"]
     entries = []
     for row, label_text in enumerate(labels):
         label = tk.Label(middle_box, text=label_text)
@@ -74,8 +83,7 @@ def show_event_view():
         entry.grid(row=row, column=1, padx=5, pady=5, sticky="ew")
         entries.append(entry)
 
-    # Unpack entries to individual variables for clarity
-    event_name_entry, event_description_entry, event_location_entry, event_duration_entry, event_participants_entry, event_priority_entry, event_date_entry = entries
+    event_name_entry, event_description_entry, event_location_entry, event_duration_entry, event_participants_entry, event_priority_entry, event_date_entry, start_time_entry, end_time_entry = entries
 
     add_event_button = tk.Button(middle_box, text='Add Event', command=lambda: add_event(
         event_name_entry.get(), 
@@ -84,9 +92,12 @@ def show_event_view():
         event_duration_entry.get(), 
         event_participants_entry.get(), 
         event_priority_entry.get(), 
-        event_date_entry.get()  # Now passing the event date as well
+        event_date_entry.get(),
+        start_time_entry.get(),
+        end_time_entry.get()
     ))
-    add_event_button.grid(row=7, column=0, columnspan=2, padx=5, pady=5, sticky="ew")
+    add_event_button.grid(row=9, column=0, columnspan=2, padx=5, pady=5, sticky="ew")
+
 
 """
 def parse_and_store_event_date(date_str):
@@ -261,7 +272,14 @@ def show_day_view(day):
     
     conn = sqlite3.connect('event_database.db')
     cursor = conn.cursor()
-    cursor.execute("SELECT event_name, event_description, event_location, event_duration, event_participants, event_priority, event_date FROM events WHERE event_date = ?", (selected_date,))
+    # Adjust the query to include ORDER BY for priority (descending) and then start_time (ascending)
+    query = """
+    SELECT event_name, event_description, event_location, event_participants, event_priority, event_date, start_time, end_time
+    FROM events
+    WHERE event_date = ?
+    ORDER BY event_priority DESC, start_time ASC
+    """
+    cursor.execute(query, (selected_date,))
     events = cursor.fetchall()
     
     if events:
@@ -269,10 +287,11 @@ def show_day_view(day):
             event_frame = tk.Frame(middle_box)
             event_frame.pack(fill='x', padx=5, pady=5, anchor="w")
             
-            event_info = f"Name: {event[0]}\nDescription: {event[1]}\nLocation: {event[2]}\nDuration: {event[3]}\nParticipants: {event[4]}\nPriority: {event[5]}\nDate: {event[6]}"
+            # Display event information, now sorted by priority and then by start time
+            event_info = f"Name: {event[0]}\nDescription: {event[1]}\nLocation: {event[2]}\nParticipants: {event[3]}\nPriority: {event[4]}\nDate: {event[5]}\nStart Time: {event[6]}\nEnd Time: {event[7]}"
             tk.Label(event_frame, text=event_info, justify="left").pack(side="left")
             
-            delete_btn = tk.Button(event_frame, text="Delete", command=lambda e=event: delete_event_and_refresh_view(e[0], e[6], day))
+            delete_btn = tk.Button(event_frame, text="Delete", command=lambda e=event: delete_event_and_refresh_view(e[0], e[5], day))
             delete_btn.pack(side="right")
             
             ttk.Separator(middle_box).pack(fill='x', padx=5, pady=5)
@@ -281,9 +300,13 @@ def show_day_view(day):
         no_events_label.pack(padx=10, pady=5)
     
     conn.close()
+
+
+
 def delete_event_and_refresh_view(event_name, event_date, day):
     delete_event(event_name, event_date)
     show_day_view(day)
+
 
 
 

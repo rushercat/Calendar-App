@@ -1,6 +1,8 @@
 # updatet version of testView2
 # The new feature is a complete new version of the day view with an integrated database from the event view. The day view is now able to show all events of a specific day and delete them.
-
+#TODO: Konzept überlegen: Wie man Events vom gleichen Tag in einer Übersicht hat, um die konkreten Uhrzeiten der Events zu sehen und vergleichen
+#TODO: Event Erstellung: Jedes Feld sollte richtigen Datentypen haben und auch die richtige Eingabevariaten (aka Uhrzeit als HH:MM und immer mit Timtpicker oder Mini Kalendar der angezeigt wird zum Datum auswählen)
+#TODO: Bestehende Events sollten bearbeitbar sein
 import sqlite3
 import tkinter as tk
 from tkinter import ttk

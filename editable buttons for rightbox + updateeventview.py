@@ -345,12 +345,31 @@ def populate_upcoming_events():
     # Fetch all matching records
     upcoming_events = cursor.fetchall()
 
-    # Display each upcoming event in the right box
+    # Function to refresh the upcoming events view
+    def refresh_upcoming_events():
+        populate_upcoming_events()
+
+    # Function to edit an event (placeholder, implement according to your UI design)
+    def edit_event(event_name, event_date):
+        print(f"Editing event '{event_name}' on {event_date}.")
+        # Placeholder: Open an edit window here
+
+    # Display each upcoming event in the right box with Edit and Delete buttons
     for event in upcoming_events:
-        event_date = datetime.strptime(event[2], "%Y-%m-%d").strftime("%d.%m.%Y")  # Format date for display
+        event_date_str = datetime.strptime(event[2], "%Y-%m-%d").strftime("%d.%m.%Y")  # Format date for display
         start_time_display = event[3] if event[3] else "Time Not Specified"
-        event_info = f"Name: {event[0]}, Date: {event_date}, Start: {start_time_display}\nDesc: {event[1]}"
-        tk.Label(right_box, text=event_info, wraplength=250, justify="left", anchor="nw", padx=5, pady=2).pack(fill='x', expand=True)
+        event_info = f"Name: {event[0]}, Date: {event_date_str}, Start: {start_time_display}\nDesc: {event[1]}"
+        
+        event_frame = tk.Frame(right_box)
+        event_frame.pack(fill='x', expand=True, padx=5, pady=2)
+        
+        tk.Label(event_frame, text=event_info, wraplength=250, justify="left", anchor="nw").pack(side="left", fill='x', expand=True)
+        
+        edit_button = tk.Button(event_frame, text="Edit", command=lambda e=event: edit_event(e[0], e[2]))
+        edit_button.pack(side="right", padx=2)
+        
+        delete_button = tk.Button(event_frame, text="Delete", command=lambda e=event: [delete_event(e[0], e[2]), refresh_upcoming_events()])
+        delete_button.pack(side="right", padx=2)
 
     conn.close()
 

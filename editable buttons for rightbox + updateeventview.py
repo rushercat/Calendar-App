@@ -47,27 +47,26 @@ def initialize_or_add_event(event_name=None, event_description=None, event_locat
 
 # Function to add event from the GUI
 def add_event(event_name, event_description, event_location, event_duration, event_participants, event_priority, event_date, start_time=None, end_time=None):
-   
     # Convert date from DD.MM.YYYY to YYYY-MM-DD for database compatibility
     start_time_value = None if start_time == '' else start_time
     end_time_value = None if end_time == '' else end_time
 
-# Convert date to YYYY-MM-DD format
+    # Convert date to YYYY-MM-DD format
     day, month, year = event_date.split('.')
     formatted_event_date = f"{year}-{month}-{day}"
 
-# Insert into the database
+    # Insert into the database
     initialize_or_add_event(
-    event_name,
-    event_description,
-    event_location,
-    event_duration,
-    event_participants,
-    event_priority,
-    formatted_event_date,
-    start_time_value,
-    end_time_value
-)
+        event_name,
+        event_description,
+        event_location,
+        event_duration,
+        event_participants,
+        event_priority,
+        formatted_event_date,
+        start_time_value,
+        end_time_value
+    )
     
     print("Event added successfully.")
     
@@ -79,6 +78,8 @@ def add_event(event_name, event_description, event_location, event_duration, eve
     # Call show_day_view with the correct day parameter
     show_day_view(int(day))
 
+    # Refresh the right box with the latest upcoming events
+    populate_upcoming_events()
 
 
 def show_event_view():

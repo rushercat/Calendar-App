@@ -1,6 +1,8 @@
 # updatet version of testView2
 # The new feature is a complete new version of the day view with an integrated database from the event view. The day view is now able to show all events of a specific day and delete them.
-
+#TODO: Konzept überlegen: Wie man Events vom gleichen Tag in einer Übersicht hat, um die konkreten Uhrzeiten der Events zu sehen und vergleichen
+#TODO: Event Erstellung: Jedes Feld sollte richtigen Datentypen haben und auch die richtige Eingabevariaten (aka Uhrzeit als HH:MM und immer mit Timtpicker oder Mini Kalendar der angezeigt wird zum Datum auswählen)
+#TODO: Bestehende Events sollten bearbeitbar sein
 import sqlite3
 import tkinter as tk
 from tkinter import ttk
@@ -15,6 +17,11 @@ from geopy.exc import GeocoderTimedOut, GeocoderUnavailable
 from requests.exceptions import HTTPError
 from datetime import datetime
 
+
+global add_event_button
+
+
+
 def initialize_or_add_event(event_name=None, event_description=None, event_location=None, event_duration=None, event_participants=None, event_priority=None, event_date=None, start_time=None, end_time=None):
     conn = sqlite3.connect('event_database.db')
     cursor = conn.cursor()
@@ -22,7 +29,7 @@ def initialize_or_add_event(event_name=None, event_description=None, event_locat
         event_name TEXT,
         event_description TEXT,
         event_location TEXT,    
-        event_duration INTEGER,
+        event_duration TEXT,
         event_participants INTEGER,
         event_priority INTEGER,
         event_date TEXT,
@@ -55,7 +62,7 @@ def add_event(event_name, event_description, event_location, event_duration, eve
 # Convert date to YYYY-MM-DD format
     day, month, year = event_date.split('.')
     formatted_event_date = f"{year}-{month}-{day}"
-
+    
 # Insert into the database
     initialize_or_add_event(
     event_name,
@@ -78,11 +85,11 @@ def add_event(event_name, event_description, event_location, event_duration, eve
 
     # Call show_day_view with the correct day parameter
     show_day_view(int(day))
-
+    populate_upcoming_events()
 
 
 def show_event_view():
-    global event_name_entry, event_description_entry, event_location_entry, event_duration_entry, event_participants_entry, event_priority_entry, event_date_entry, start_time_entry, end_time_entry
+    global add_event_button, event_name_entry, event_description_entry, event_location_entry, event_duration_entry, event_participants_entry, event_priority_entry, event_date_entry, start_time_entry, end_time_entry
 
     view_header_label.config(text="Event View")
     for widget in middle_box.winfo_children():
@@ -111,7 +118,98 @@ def show_event_view():
         end_time_entry.get()
     ))
     add_event_button.grid(row=9, column=0, columnspan=2, padx=5, pady=5, sticky="ew")
+    
+def populate_event_view_for_editing(event_name, event_date):
+    # Fetch event details from the database
+    event_details = fetch_event_details(event_name, event_date)
+    if not event_details:
+        print("Event details not found.")
+        return
 
+    # Switch to event view if not already there
+    switch_to_event_view()
+
+    # Populate form fields with event details
+    event_name_entry.delete(0, tk.END)
+    event_name_entry.insert(0, event_details[0])
+
+    event_description_entry.delete(0, tk.END)
+    event_description_entry.insert(0, event_details[1])
+
+    event_location_entry.delete(0, tk.END)
+    event_location_entry.insert(0, event_details[2])
+
+    event_duration_entry.delete(0, tk.END)
+    event_duration_entry.insert(0, event_details[3])
+
+    event_participants_entry.delete(0, tk.END)
+    event_participants_entry.insert(0, event_details[4])
+
+    event_priority_entry.delete(0, tk.END)
+    event_priority_entry.insert(0, event_details[5])
+
+    event_date_entry.delete(0, tk.END)
+    event_date_entry.insert(0, event_details[6])
+
+    start_time_entry.delete(0, tk.END)
+    start_time_entry.insert(0, event_details[7] if event_details[7] else "")
+
+    end_time_entry.delete(0, tk.END)
+    end_time_entry.insert(0, event_details[8] if event_details[8] else "")
+
+    # Update the command of the add event button to handle the event update
+    global add_event_button
+    add_event_button.config(text='Update Event', command=lambda: update_event_and_refresh_view(
+        original_event_name=event_name,
+        original_event_date=event_date,
+        event_name=event_name_entry.get(),
+        event_description=event_description_entry.get(),
+        event_location=event_location_entry.get(),
+        event_duration=event_duration_entry.get(),
+        event_participants=int(event_participants_entry.get()),
+        event_priority=int(event_priority_entry.get()),
+        event_date=event_date_entry.get(),
+        start_time=start_time_entry.get(),
+        end_time=end_time_entry.get()
+    ))
+
+def fetch_event_details(event_name, event_date):
+    conn = sqlite3.connect('event_database.db')
+    cursor = conn.cursor()
+    cursor.execute("SELECT * FROM events WHERE event_name = ? AND event_date = ?", (event_name, event_date))
+    event_details = cursor.fetchone()
+    conn.close()
+    return event_details
+
+def update_event(original_event_name, original_event_date, event_name, event_description, event_location, event_duration, event_participants, event_priority, event_date, start_time, end_time):
+    conn = sqlite3.connect('event_database.db')
+    cursor = conn.cursor()
+    cursor.execute("""UPDATE events SET event_name = ?, event_description = ?, event_location = ?, event_duration = ?, event_participants = ?, event_priority = ?, event_date = ?, start_time = ?, end_time = ? WHERE event_name = ? AND event_date = ?""", (event_name, event_description, event_location, event_duration, event_participants, event_priority, event_date, start_time, end_time, original_event_name, original_event_date))
+    conn.commit()
+    conn.close()
+    print("Event updated successfully.")
+
+def update_event_and_refresh_view(original_event_name, original_event_date, event_name, event_description, event_location, event_duration, event_participants, event_priority, event_date, start_time, end_time):
+    # Update the event in the database
+    update_event(original_event_name, original_event_date, event_name, event_description, event_location, event_duration, event_participants, event_priority, event_date, start_time, end_time)
+    
+    # Ensure global variables are correctly set for the date
+    global yearGlobal, monthGlobal
+    year, month, day = map(int, event_date.split('-'))
+    yearGlobal, monthGlobal = year, month
+
+    # Refresh the views
+    show_day_view(day)  # Show the updated day view
+    populate_upcoming_events()  # Refresh the upcoming events list
+
+
+"""
+def parse_and_store_event_date(date_str):
+    # Assuming date_str is in DD-MM-YYYY format
+    day, month, year = map(int, date_str.split('-'))
+    # Convert to YYYY-MM-DD format for storage
+    return f"{year:04d}-{month:02d}-{day:02d}"
+"""
 
 
 
@@ -265,6 +363,12 @@ def delete_event(event_name, event_date):
     conn.commit()
     conn.close()
     print(f"Deleted event '{event_name}' on {event_date}.")
+def delete_event_and_refresh_upcoming(event_name, event_date):
+    # Delete the event
+    delete_event(event_name, event_date)
+    
+    # Refresh the upcoming events list
+    populate_upcoming_events()
 
 
 def show_day_view(day):
@@ -305,8 +409,11 @@ def show_day_view(day):
             event_frame.pack(fill='x', padx=5, pady=5, anchor="w")
             tk.Label(event_frame, text=event_info, justify="left").pack(side="left")
             
+            edit_btn = tk.Button(event_frame, text="Edit", command=lambda e=event: populate_event_view_for_editing(e[0], e[5]))
+            edit_btn.pack(side="right", padx=5)
+            
             delete_btn = tk.Button(event_frame, text="Delete", command=lambda e=event: delete_event_and_refresh_view(e[0], e[5], day))
-            delete_btn.pack(side="right")
+            delete_btn.pack(side="right", padx=5)
             
             ttk.Separator(middle_box).pack(fill='x', padx=5, pady=5)
     else:
@@ -316,42 +423,62 @@ def show_day_view(day):
     conn.close()
 
 
+
 def delete_event_and_refresh_view(event_name, event_date, day):
     delete_event(event_name, event_date)
     show_day_view(day)
 
 
 def populate_upcoming_events():
-    # Clear the right box first
+    # First, clear any existing content in the right box
     for widget in right_box.winfo_children():
         widget.destroy()
-
-    # Get today's date in the format stored in your database
-    today_date = datetime.now().strftime("%Y-%m-%d")
 
     # Connect to the database
     conn = sqlite3.connect('event_database.db')
     cursor = conn.cursor()
-
-    # Fetch upcoming events, sorted by date and start time
+    # Assuming you want to display events from today onwards
+    today_date = datetime.now().strftime("%Y-%m-%d")
     cursor.execute("""
         SELECT event_name, event_description, event_date, start_time
         FROM events
         WHERE event_date >= ?
         ORDER BY event_date ASC, start_time ASC
     """, (today_date,))
-
-    # Fetch all matching records
     upcoming_events = cursor.fetchall()
 
-    # Display each upcoming event in the right box
+    # Loop through the upcoming events and create a frame for each event
     for event in upcoming_events:
-        event_date = datetime.strptime(event[2], "%Y-%m-%d").strftime("%d.%m.%Y")  # Format date for display
+        event_frame = tk.Frame(right_box)
+        event_frame.pack(fill='x', padx=5, pady=5, anchor="w")
+
+        # Display the event details
+        event_date = datetime.strptime(event[2], "%Y-%m-%d").strftime("%d.%m.%Y")
         start_time_display = event[3] if event[3] else "Time Not Specified"
         event_info = f"Name: {event[0]}, Date: {event_date}, Start: {start_time_display}\nDesc: {event[1]}"
-        tk.Label(right_box, text=event_info, wraplength=250, justify="left", anchor="nw", padx=5, pady=2).pack(fill='x', expand=True)
+        tk.Label(event_frame, text=event_info, justify="left").pack(side="left")
+
+        # Add "Edit" and "Delete" buttons for each event
+        edit_btn = tk.Button(event_frame, text="Edit", command=lambda e=event: populate_event_view_for_editing(e[0], e[2]))
+        edit_btn.pack(side="right", padx=5)
+
+        delete_btn = tk.Button(event_frame, text="Delete", command=lambda e=event: delete_event_and_refresh_upcoming(e[0], e[2]))
+        delete_btn.pack(side="right", padx=5)
 
     conn.close()
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -442,6 +569,7 @@ populate_month(monthGlobal, yearGlobal)
 
 # Call the function to initially populate the right box
 populate_upcoming_events()
+
 # Start the main event loop
 root.mainloop()
 

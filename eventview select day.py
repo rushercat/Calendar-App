@@ -14,7 +14,8 @@ from geopy.exc import GeocoderTimedOut, GeocoderUnavailable
 from requests.exceptions import HTTPError
 from datetime import datetime
 from functools import partial 
-
+from tkcalendar import Calendar
+global event_date_entry
 def initialize_or_add_event(event_name=None, event_description=None, event_location=None, event_duration=None, event_participants=None, event_priority=None, event_date=None, start_time=None, end_time=None):
     conn = sqlite3.connect('event_database.db')
     cursor = conn.cursor()
@@ -80,7 +81,6 @@ def add_event(event_name, event_description, event_location, event_duration, eve
     # Refresh the right box with the latest upcoming events
     populate_upcoming_events()
 
-
 def show_event_view():
     global event_name_entry, event_description_entry, event_location_entry, event_duration_entry, event_participants_entry, event_priority_entry, event_date_entry, start_time_entry, end_time_entry
 
@@ -99,18 +99,63 @@ def show_event_view():
 
     event_name_entry, event_description_entry, event_location_entry, event_duration_entry, event_participants_entry, event_priority_entry, event_date_entry, start_time_entry, end_time_entry = entries
 
+    # Frame to hold the date selection area
+    date_frame = tk.Frame(middle_box)
+    date_frame.grid(row=6, column=0, columnspan=2, padx=5, pady=5)
+
+    tk.Label(date_frame, text="Event Date (DD.MM.YYYY):").grid(row=0, column=0)
+
+    # Create a read-only Entry to display the selected date
+    event_date_entry = tk.Entry(date_frame, state="readonly")
+    event_date_entry.grid(row=0, column=1)
+
+    # Function to select a date from the calendar and update the entry 
+    def select_date(cal, date_entry):
+        selected = cal.selection_get()
+        if selected:
+            date_entry.delete(0, "end")
+            date_entry.insert(0, selected.strftime("%d.%m.%Y"))
+            cal_window.destroy()
+
+    # Button to open the mini calendar
+    calendar_button = tk.Button(
+        date_frame, text="...", command=lambda: open_mini_calendar(event_date_entry)
+    )
+    calendar_button.grid(row=0, column=2)
+
+    # Function to open a Calendar pop-up
+    def open_mini_calendar(date_entry):
+        global cal_window
+        try:  # Close the existing calendar window if it's open
+            cal_window.destroy()
+        except NameError:
+            pass
+
+        cal_window = tk.Toplevel(root)
+        cal_window.title("Select Date")
+
+        cal = Calendar(cal_window, font="Arial 10", selectmode="day", year=yearGlobal, month=monthGlobal, day=1) 
+        cal.pack()  
+
+        # Create a Button to select the date
+        ttk.Button(cal_window, text="Select", command=lambda: select_date(cal, date_entry)).pack(pady=5)
+
     add_event_button = tk.Button(middle_box, text='Add Event', command=lambda: add_event(
-        event_name_entry.get(), 
-        event_description_entry.get(), 
-        event_location_entry.get(), 
-        event_duration_entry.get(), 
-        event_participants_entry.get(), 
+        event_name_entry.get(),
+        event_description_entry.get(),
+        event_location_entry.get(),
+        event_duration_entry.get(),
+        event_participants_entry.get(),
         event_priority_entry.get(), 
         event_date_entry.get(),
         start_time_entry.get(),
         end_time_entry.get()
     ))
     add_event_button.grid(row=9, column=0, columnspan=2, padx=5, pady=5, sticky="ew")
+
+
+# Inside your main function or where you define the event_date_entry, ensure it's set to 'readonly' initially if you want it to be non-editable.
+# Make sure to pass the correct event_date_entry widget reference to the open_mini_calendar function.
 
 
 
